@@ -1,30 +1,27 @@
 package org.example.tentrilliondollars.review.service;
 
 import jakarta.transaction.Transactional;
-
 import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
-import org.example.tentrilliondollars.order.repository.OrderDetailRepository;
+import org.example.tentrilliondollars.global.exception.AccessDeniedException;
+import org.example.tentrilliondollars.global.exception.BadRequestException;
+import org.example.tentrilliondollars.global.exception.NotFoundException;
+import org.example.tentrilliondollars.order.entity.OrderDetail;
 import org.example.tentrilliondollars.order.service.OrderService;
 import org.example.tentrilliondollars.product.entity.Product;
-import org.example.tentrilliondollars.product.repository.ProductRepository;
 import org.example.tentrilliondollars.product.service.ProductService;
 import org.example.tentrilliondollars.review.dto.ReviewRequest;
 import org.example.tentrilliondollars.review.dto.ReviewResponse;
 import org.example.tentrilliondollars.review.entity.Review;
 import org.example.tentrilliondollars.review.repository.ReviewRepository;
 import org.example.tentrilliondollars.s3.S3Service;
-import org.example.tentrilliondollars.user.entity.User;
-import org.example.tentrilliondollars.user.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
-import org.springframework.web.server.ResponseStatusException;
+import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
 
 @Service
 @RequiredArgsConstructor
@@ -44,16 +41,31 @@ public class ReviewService {
         Long userId
     ) {
         Product product = productService.getProduct(productId);
+        List<OrderDetail> orderDetails = orderService.getOrderDetails(userId, productId);
         productService.checkProductStateIsFalse(product);
-        if (!canUserReviewProduct(userId, productId)) {
-            throw new IllegalArgumentException("리뷰를 작성할 수 없습니다. 주문 내역을 확인해주세요.");
+//        if(!orderService.checkOrderState(userId,productId)) {
+//            throw new BadRequestException("결제를 한 상태의 주문에 대해서만 리뷰 작성이 가능합니다.");
+//        }
+        if (orderDetails.isEmpty()) {
+            throw new BadRequestException("주문한 상품에 대해서만 리뷰 작성이 가능합니다.");
         }
+        OrderDetail orderDetail = orderDetails.get(0);
+//        if(!canUserReviewProduct(userId, productId)) {
+//            throw new BadRequestException("주문한 상품에 대해서만 리뷰 작성이 가능 합니다.");
+//        }
+        if(orderDetail.isReviewed()){
+            throw new BadRequestException("이미 작성한 리뷰 입니다.");
+        }
+
         if(reviewRequest.getScore()<1||reviewRequest.getScore()>5){
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "1점부터 5점까지 입력해주세요");
+            throw new BadRequestException( "1점부터 5점까지 입력해주세요");
         }
+
         Review review = new Review(reviewRequest, productId, userId);
+        orderService.saveOrderDetailReviewedState(orderDetail);
         reviewRepository.save(review);
     }
+
     // 게시글 전체 조회
     public List<ReviewResponse> getAllReviews(
         Long productId
@@ -90,7 +102,7 @@ public class ReviewService {
         Review review = findReviewByIdOrThrow(reviewId);
         checkAuthorization(review,userId);
         if(reviewRequest.getScore()<1||reviewRequest.getScore()>5){
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "1점부터 5점까지 입력해주세요");
+            throw new BadRequestException("1점부터 5점까지 입력해주세요");
         }
         review.updateReview(reviewRequest);
     }
@@ -99,41 +111,49 @@ public class ReviewService {
     //리뷰 유무 메서드
     public Review findReviewByIdOrThrow(Long reviewId) {
         return reviewRepository.findById(reviewId)
-            .orElseThrow(() ->  new ResponseStatusException(HttpStatus.NOT_FOUND, "리뷰를 찾을 수 없습니다."));
+            .orElseThrow(() ->  new NotFoundException("리뷰를 찾을 수 없습니다."));
     }
     //유저 권한 확인 메서드
     public void checkAuthorization(Review review,Long userId){
         if(!review.getUserId().equals(userId)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "다른 유저의 게시글을 수정/삭제할 수 없습니다.");
+            throw new AccessDeniedException("다른 유저의 게시글을 수정/삭제할 수 없습니다.");
         }
     }
-    // 사용자가 해당 상품을 구매했는지 확인
+
+    // 사용자가 해당 상품을 구매했는지 확인1
+    /*
     private boolean canUserReviewProduct(Long userId, Long productId) {
         long orderCount = orderService.countByUserIdAndProductId(userId, productId);
         long reviewCount = reviewRepository.countByUserIdAndProductId(userId, productId);
         return orderCount > reviewCount;
     }
+*/
 
     public Review getReview(Long reviewId) {
         return reviewRepository.findById(reviewId).orElseThrow(
-                () -> new IllegalArgumentException("해당 상품이 존재하지 않습니다.")
+            () -> new NotFoundException("해당 상품이 존재하지 않습니다.")
         );
     }
 
-    public void uploadReviewImage(Long productId, MultipartFile file) throws IOException {
+    public void uploadReviewImage(Long reviewId, MultipartFile file) throws IOException {
         String imageKey =UUID.randomUUID().toString();
+        String format = "review-images/%s/%s".formatted(reviewId,
+            imageKey)+".PNG";
         s3Service.putObject(
-                bucketName,"review-images/%s/%s".formatted(productId,
-                        imageKey),
-                file.getBytes());
-        Review review =getReview(productId);
-        review.updateImageId(imageKey);
-       reviewRepository.save(review);
+            bucketName,format,
+            file);
+        String url = "https://"+bucketName+".s3"+".ap-northeast-2.amazonaws.com/"+format;
+        Review review =getReview(reviewId);
+        review.updateImageUrl(url);
+        reviewRepository.save(review);
     }
 
-    public ResponseEntity<byte[]> getReviewImage(Long productId) throws IOException {
-        String imageKey = "review-images/1/"+getReview(productId).getImageKey();
-        return s3Service.getProductImage(bucketName,imageKey);
+    public String getReviewImage(Long reviewId) {
+        try {
+            return getReview(reviewId).getImageUrl();
+        } catch (NoSuchKeyException e) {
+            throw new NotFoundException("요청한 리뷰 이미지가 S3 버킷에 존재하지 않습니다. 이미지 키를 확인해주세요.");
+        }
     }
 
 

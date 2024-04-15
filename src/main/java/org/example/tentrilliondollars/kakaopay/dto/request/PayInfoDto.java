@@ -8,4 +8,5 @@ import lombok.Setter;
 public class PayInfoDto {
     private Long price;
     private String itemName;
+    private Long orderId;
 }

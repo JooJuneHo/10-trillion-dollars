@@ -34,7 +34,7 @@ public class Product extends TimeStamped {
     @Column
     private Long stock;
     @Column
-    private String imageKey;
+    private String imageUrl;
     @Column
     private boolean state;
     @Column
@@ -70,7 +70,7 @@ public class Product extends TimeStamped {
         this.stock = stock - quantity;
     }
 
-    public void updateImageKey(String imageKey){
-        this.imageKey =imageKey;
+    public void updateImageUrl(String imageUrl){
+        this.imageUrl =imageUrl;
     }
 }

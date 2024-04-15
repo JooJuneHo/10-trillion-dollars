@@ -1,7 +1,5 @@
 package org.example.tentrilliondollars.order.entity;
 
-
-
 import jakarta.persistence.Column;
 import jakarta.persistence.ConstraintMode;
 import jakarta.persistence.Entity;
@@ -36,18 +34,27 @@ public class OrderDetail {
     private Long price;
 
     @Column
+    private Long orderId;
+
+    @Column
     private Long quantity;
+    @Column(nullable = false)
+    private boolean reviewed = false;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "order_id", nullable = false, foreignKey = @ForeignKey(ConstraintMode.NO_CONSTRAINT))
-    private Order order;
 
-    public OrderDetail(Order order,Long productId,Long quantity,Long price,String productName){
+    public void setReviewed(boolean reviewed) {
+        this.reviewed = reviewed;
+    }
+
+    public OrderDetail(Long orderId,Long productId,Long quantity,Long price,String productName) {
         this.productId = productId;
         this.productName = productName;
         this.quantity = quantity;
-        this.order = order;
+        this.orderId = orderId;
         this.price = price;
     }
 
+
 }
+
+

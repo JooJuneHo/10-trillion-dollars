@@ -14,14 +14,14 @@ import org.example.tentrilliondollars.order.entity.OrderState;
 public class OrderDetailResponseDto {
     private Long productId;
     private Long quantity;
-    private OrderState state;
+    //private OrderState state;
     private String productName;
 
 
     public OrderDetailResponseDto(OrderDetail orderDetail){
         this.productId = orderDetail.getProductId();
         this.quantity = orderDetail.getQuantity();
-        this.state = orderDetail.getOrder().getState();
+        //this.state = orderDetail.getOrder().getState();
         this.productName = orderDetail.getProductName();
     }
 

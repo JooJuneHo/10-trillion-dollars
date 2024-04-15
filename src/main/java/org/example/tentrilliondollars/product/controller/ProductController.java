@@ -58,7 +58,7 @@ public class ProductController {
     }
 
     @GetMapping("{productId}/image")
-    public ResponseEntity<byte[]> getProductImage(@PathVariable Long productId) throws IOException {
+    public String getProductImage(@PathVariable Long productId) throws IOException {
       return productService.getProductImage(productId);
     }
 

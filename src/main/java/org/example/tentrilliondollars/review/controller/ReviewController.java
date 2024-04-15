@@ -57,13 +57,13 @@ public class ReviewController {
     }
 
     @GetMapping("reviews/{reviewId}/image")
-    public ResponseEntity<byte[]> getProductImage(@PathVariable Long reviewId) throws IOException{
+    public String getReviewImage(@PathVariable Long reviewId) throws IOException{
         return reviewService.getReviewImage(reviewId);
     }
 
     @PostMapping("reviews/{reviewId}/image")
-    public void uploadReviewImage(@PathVariable Long productId, @RequestParam("file") MultipartFile file) throws IOException {
-        reviewService.uploadReviewImage(productId,file);
+    public void uploadReviewImage(@PathVariable Long reviewId, @RequestParam("file") MultipartFile file) throws IOException {
+        reviewService.uploadReviewImage(reviewId,file);
     }
 
 

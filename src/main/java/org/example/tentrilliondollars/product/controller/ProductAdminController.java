@@ -7,6 +7,7 @@ import org.example.tentrilliondollars.global.security.UserDetailsImpl;
 import org.example.tentrilliondollars.product.dto.request.ProductRequest;
 import org.example.tentrilliondollars.product.dto.request.ProductUpdateRequest;
 import org.example.tentrilliondollars.product.dto.request.StockUpdateRequest;
+import org.example.tentrilliondollars.product.dto.response.ProductAdminResponse;
 import org.example.tentrilliondollars.product.dto.response.ProductResponse;
 import org.example.tentrilliondollars.product.service.ProductService;
 import org.springframework.data.crossstore.ChangeSetPersister.NotFoundException;
@@ -44,20 +45,26 @@ public class ProductAdminController {
         return ResponseEntity.status(201)
             .body("Product created successfully");
     }
-
-    @GetMapping
-    public List<ProductResponse> getAdminProducts(
-        @RequestParam(defaultValue = "0") int page,
-        @RequestParam(defaultValue = "10") int size,
-        @AuthenticationPrincipal UserDetailsImpl userDetails
-    ) {
-
-        Pageable pageable = PageRequest.of(page, size);
-
-        return productService.getAdminProducts(userDetails.getUser(), pageable);
-
-    }
-
+// 원본 코드 기록
+//    @GetMapping
+//    public List<ProductResponse> getAdminProducts(
+//        @RequestParam(defaultValue = "0") int page,
+//        @RequestParam(defaultValue = "10") int size,
+//        @AuthenticationPrincipal UserDetailsImpl userDetails
+//    ) {
+//        Pageable pageable = PageRequest.of(page, size);
+//        return productService.getAdminProducts(userDetails.getUser(), pageable);
+//    }
+@GetMapping
+public List<ProductAdminResponse> getAdminProducts(
+    @RequestParam(defaultValue = "0") int page,
+    @RequestParam(defaultValue = "10") int size,
+    @AuthenticationPrincipal UserDetailsImpl userDetails
+) {
+    Pageable pageable = PageRequest.of(page, size);
+    //본래의 get method를 관리자 전용으로
+    return productService.getAdminProducts(userDetails.getUser(), pageable);
+}
     @PutMapping("/{productId}")
     public ResponseEntity<String> updateAdminProduct(
         @PathVariable Long productId,

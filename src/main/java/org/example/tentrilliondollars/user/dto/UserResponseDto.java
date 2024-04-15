@@ -1,7 +1,9 @@
 package org.example.tentrilliondollars.user.dto;
 
+import lombok.Getter;
 import org.example.tentrilliondollars.user.entity.UserRoleEnum;
 
+@Getter
 public class UserResponseDto {
 
     private String username;

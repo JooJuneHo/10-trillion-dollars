@@ -10,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.example.tentrilliondollars.address.entity.Address;
 import org.example.tentrilliondollars.address.service.AddressService;
+import org.example.tentrilliondollars.global.exception.BadRequestException;
 import org.example.tentrilliondollars.global.security.UserDetailsImpl;
 import org.example.tentrilliondollars.order.dto.OrderDetailResponseDto;
 import org.example.tentrilliondollars.order.dto.OrderResponseDto;
@@ -22,6 +23,7 @@ import org.example.tentrilliondollars.product.entity.Product;
 import org.example.tentrilliondollars.product.service.ProductService;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
+import org.springframework.data.crossstore.ChangeSetPersister;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -37,13 +39,6 @@ public class OrderService {
     private final EntityManager entityManager;
     private final RedissonClient redissonClient;
 
-    //글로벌 예외에 추가해야함
-    public class InsufficientStockException extends RuntimeException {
-
-        public InsufficientStockException(String message) {
-            super(message);
-        }
-    }
 
     @Transactional
     public void createOrder(Map<Long, Long> basket, UserDetailsImpl userDetails, Long addressId)
@@ -55,7 +50,6 @@ public class OrderService {
         for (Long productId : basket.keySet()) {
             String lockKey = "product_lock:" + productId;
             RLock lock = redissonClient.getLock(lockKey);
-
             try {
                 boolean isLocked = lock.tryLock(5, 10, TimeUnit.SECONDS);
                 if (!isLocked) {
@@ -63,9 +57,9 @@ public class OrderService {
                 }
                 Product product = productService.getProduct(productId);
                 if (product.getStock() < basket.get(productId)) {
-                    throw new InsufficientStockException("상품 재고가 부족합니다. 상품 ID: " + productId);
+                    throw new BadRequestException("상품 재고가 부족합니다. 상품 ID: " + productId);
                 }
-                OrderDetail orderDetail = new OrderDetail(order, productId, basket.get(productId),
+                OrderDetail orderDetail = new OrderDetail(order.getId(), productId, basket.get(productId),
                     product.getPrice(), product.getName());
                 orderDetailRepository.save(orderDetail);
             } catch (InterruptedException e) {
@@ -85,13 +79,13 @@ public class OrderService {
 
     @Transactional
     public void updateStockAndCreateOrderDetail(Long productId, Long quantity) {
-        entityManager.clear();
+        //entityManager.clear();
         Product product = productService.getProduct(productId);
         System.out.println(product.getStock());
         Long stock = product.getStock();
         // 재고 확인
         if (quantity > stock) {
-            throw new InsufficientStockException("상품 재고가 부족합니다. 상품 ID: " + productId);
+            throw new BadRequestException("상품 재고가 부족합니다. 상품 ID: " + productId);
         }
         product.updateStockAfterOrder(quantity);
         productService.save(product);
@@ -99,15 +93,15 @@ public class OrderService {
 
 
     public List<OrderDetailResponseDto> getOrderDetailList(Long orderId) {
-        List<OrderDetail> listOfOrderedProducts = orderDetailRepository.findOrderDetailsByOrder(
-            orderRepository.getById(orderId));
+        List<OrderDetail> listOfOrderedProducts = orderDetailRepository.findOrderDetailsByOrderId(
+           orderId);
         return listOfOrderedProducts.stream().map(OrderDetailResponseDto::new).toList();
     }
 
     @Transactional
     public void deleteOrder(Long orderId) {
         orderDetailRepository.deleteAll(
-            orderDetailRepository.findOrderDetailsByOrder(orderRepository.getById(orderId)));
+            orderDetailRepository.findOrderDetailsByOrderId(orderId));
         orderRepository.delete(orderRepository.getById(orderId));
     }
 
@@ -139,7 +133,7 @@ public class OrderService {
     public void checkBasket(Map<Long, Long> basket) throws Exception {
         for (Long key : basket.keySet()) {
             if (!checkStock(key, basket.get(key))) {
-                throw new Exception("id:" + key + " 수량부족");
+                throw new BadRequestException("id:" + key + " 수량부족");
             }
         }
     }
@@ -147,19 +141,59 @@ public class OrderService {
     public Order getOrder(Long orderId) {
         return orderRepository.getById(orderId);
     }
-
-    public long countByUserIdAndProductId(Long userId, Long productId) {
+//    리뷰 검증 메서드 1
+  /* public long countByUserIdAndProductId(Long userId, Long productId) {
         return orderDetailRepository.countByUserIdAndProductId(userId, productId);
     }
+*/
+
 
     public Long getTotalPrice(Long orderId) {
-        List<OrderDetail> ListofOrderDetail = orderDetailRepository.findOrderDetailsByOrder(
-            orderRepository.getReferenceById(orderId));
+        List<OrderDetail> ListofOrderDetail = orderDetailRepository.findOrderDetailsByOrderId(
+            orderId);
         Long totalPrice = 0L;
         for (OrderDetail orderDetail : ListofOrderDetail) {
             totalPrice += orderDetail.getPrice() * orderDetail.getQuantity();
         }
         return totalPrice;
+    }
+/*
+    public boolean checkOrderState(Long userId, Long productId) {
+        List<OrderDetail> orderDetails = orderDetailRepository.findByOrderUserIdAndProductId(userId, productId);
+        for (OrderDetail orderDetail : orderDetails) {
+            if (!orderRepository.getById(orderDetail.getOrder()).getState().equals(OrderState.NOTPAYED)) {
+                return true;
+            }
+        }
+        return false;
+    }
+    */
+    public List<OrderDetail> getOrderDetails(Long userId, Long productId) {
+        return orderDetailRepository.findByUserIdAndProductIdAndReviewedIsFalse(userId, productId);
+    }
+    @Transactional
+    public void saveOrderDetailReviewedState(OrderDetail orderDetail){
+        orderDetail.setReviewed(true);
+        orderDetailRepository.save(orderDetail);
+    }
+
+
+    @Transactional
+    public Long createOrderTest(Map<Long,Long> basket,UserDetailsImpl userDetails,Long addressId) throws Exception {
+        checkBasket(basket);
+        Order order = new Order(userDetails.getUser().getId(),OrderState.NOTPAYED, addressId);
+        orderRepository.save(order);
+        for(Long key:basket.keySet()){
+            OrderDetail orderDetail= new OrderDetail(order.getId(),key,basket.get(key),productService.getProduct(key).getPrice(),productService.getProduct(key).getName());
+            orderDetailRepository.save(orderDetail);
+            updateStock(key,basket.get(key));
+        }
+        return order.getId();
+    }
+
+    public void updateStock(Long productId,Long quantity) throws ChangeSetPersister.NotFoundException {
+        Product product =  productService.getProduct(productId);
+        product.updateStockAfterOrder(quantity);
     }
 
 }
