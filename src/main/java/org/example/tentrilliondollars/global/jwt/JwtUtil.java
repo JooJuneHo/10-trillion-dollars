@@ -65,16 +65,6 @@ public class JwtUtil {
         res.addCookie(cookie);
     }
 
-    public void removeJwtAtCookie(HttpServletRequest request, HttpServletResponse res) {
-        Cookie[] cookie = request.getCookies(); // Name-Value
-        for (Cookie loginCookie : cookie) {
-            if (loginCookie.getName().equals(AUTHORIZATION_HEADER)) {
-                loginCookie.setMaxAge(0);
-                res.addCookie(loginCookie);
-            }
-        }
-    }
-
 
     public Claims getUserInfoFromToken(String token) {
         return Jwts.parserBuilder().setSigningKey(key).build().parseClaimsJws(token).getBody();
