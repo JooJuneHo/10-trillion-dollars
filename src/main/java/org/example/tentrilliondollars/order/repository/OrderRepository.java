@@ -10,6 +10,8 @@ import org.springframework.data.repository.query.Param;
 
 public interface OrderRepository extends JpaRepository<Order, Long> {
     List<Order> findOrdersByUserId(Long userId);
+    //오더 아이디 리스트로 오더를 한번에 가져오는 쿼리
+    List<Order> findByIdIn(List<Long> orderIds);
     @Query("SELECT o FROM Order o WHERE o.state = 'NOTPAYED' AND o.createdAt < :cutoff")
     List<Order> findUnpaidOrdersOlderThan(@Param("cutoff") LocalDateTime cutoff);
 }

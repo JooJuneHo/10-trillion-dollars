@@ -1,6 +1,7 @@
 package org.example.tentrilliondollars.order.service;
 
 
+import jakarta.annotation.PreDestroy;
 import java.util.concurrent.TimeUnit;
 import lombok.RequiredArgsConstructor;
 import org.example.tentrilliondollars.product.service.ProductService;
@@ -120,10 +121,13 @@ public class EmailService {
         }
     }
 
+    @PreDestroy
     public void close() {
-        sesClient.close();
+        if (sesClient != null) {
+            sesClient.close();
+            System.out.println("SES Client has been closed.");
+        }
     }
-
 }
 
 

@@ -3,10 +3,12 @@ package org.example.tentrilliondollars.order.service;
 import jakarta.persistence.EntityManager;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.example.tentrilliondollars.address.entity.Address;
@@ -14,6 +16,7 @@ import org.example.tentrilliondollars.address.service.AddressService;
 import org.example.tentrilliondollars.global.exception.BadRequestException;
 import org.example.tentrilliondollars.global.exception.NotFoundException;
 import org.example.tentrilliondollars.global.security.UserDetailsImpl;
+import org.example.tentrilliondollars.order.dto.OrderDetailAdminResponse;
 import org.example.tentrilliondollars.order.dto.OrderDetailResponseDto;
 import org.example.tentrilliondollars.order.dto.OrderResponseDto;
 import org.example.tentrilliondollars.order.entity.Order;
@@ -22,6 +25,7 @@ import org.example.tentrilliondollars.order.entity.OrderState;
 import org.example.tentrilliondollars.order.repository.OrderDetailRepository;
 import org.example.tentrilliondollars.order.repository.OrderRepository;
 import org.example.tentrilliondollars.order.service.EmailService.EmailType;
+import org.example.tentrilliondollars.product.dto.response.ProductAdminResponse;
 import org.example.tentrilliondollars.product.entity.Product;
 import org.example.tentrilliondollars.product.service.ProductService;
 import org.example.tentrilliondollars.user.entity.User;
@@ -115,16 +119,16 @@ public class OrderService {
             Long stock = productService.getProduct(productId).getStock();
             if (stock == 0) {
                 System.out.println("재고부족");
-                emailService.sendCancellationEmail(email, orderDetails,
-                    EmailType.STOCK_OUT); // 취소 이메일 발송
-                emailService.saveStock_Out_UserInfoToRedis(email, productId);
+//                emailService.sendCancellationEmail(email, orderDetails,
+//                    EmailType.STOCK_OUT); // 취소 이메일 발송
+//                emailService.saveStock_Out_UserInfoToRedis(email, productId);
                 throw new BadRequestException("상품 ID: " + productId + ", 재고가 없습니다.");
             }
             if (stock < quantity) {
                 System.out.println("재고부족2");
-                emailService.sendCancellationEmail(email, orderDetails,
-                    EmailType.STOCK_OUT); // 취소 이메일 발송
-                emailService.saveStock_Out_UserInfoToRedis(email, productId);
+//                emailService.sendCancellationEmail(email, orderDetails,
+//                    EmailType.STOCK_OUT); // 취소 이메일 발송
+//                emailService.saveStock_Out_UserInfoToRedis(email, productId);
                 throw new BadRequestException(
                     "상품 ID: " + productId + ", 재고가 부족합니다. 요청 수량: " + quantity + ", 현재 재고: "
                         + stock);
@@ -203,9 +207,10 @@ public class OrderService {
         orderDetailRepository.save(orderDetail);
     }
 
+
     //**********************스케쥴 메서드*************************//
     @Transactional
-    @Scheduled(fixedDelay = 10000) // 5분에 한번씩 실행
+    @Scheduled(fixedDelay = 100000) // 5분에 한번씩 실행
     public void cancelUnpaidOrdersAndRestoreStock(
     ) {
         //시간 설정 변수 선언
@@ -218,12 +223,12 @@ public class OrderService {
                 order.changeState(OrderState.CANCELLED);
                 orderRepository.save(order);
                 restoreStock(order); // 재고 복구 로직
-                User user = userService.findById(order.getUserId());
-                String email = user.getEmail();// 주문한 사용자의 이메일 주소 가져오기
-                OrderDetail orderDetail = orderDetailRepository.findOrderDetailByOrderId(order.getId());
-                String orderDetails = "Order ID: " + orderDetail.getProductName(); // 주문 상세 내용
-                emailService.sendCancellationEmail(email, orderDetails,
-                    EmailType.PAYMENT_TIMEOUT); // 취소 이메일 발송
+//                User user = userService.findById(order.getUserId());
+//                String email = user.getEmail();// 주문한 사용자의 이메일 주소 가져오기
+//                OrderDetail orderDetail = orderDetailRepository.findOrderDetailByOrderId(order.getId());
+//                String orderDetails = "Order ID: " + orderDetail.getProductName(); // 주문 상세 내용
+//                emailService.sendCancellationEmail(email, orderDetails,
+//                    EmailType.PAYMENT_TIMEOUT); // 취소 이메일 발송
             }
         }
     }
@@ -270,6 +275,7 @@ public class OrderService {
     public Order getById(Long orderId) {
         return orderRepository.findById(orderId).orElseThrow();
     }
+
 
 
 }

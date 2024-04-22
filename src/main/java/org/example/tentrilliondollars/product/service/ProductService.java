@@ -3,7 +3,9 @@ package org.example.tentrilliondollars.product.service;
 import jakarta.validation.constraints.Email;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
@@ -16,6 +18,8 @@ import org.example.tentrilliondollars.order.repository.OrderRepository;
 import org.example.tentrilliondollars.order.service.EmailService;
 import org.example.tentrilliondollars.order.service.NotificationService;
 import org.example.tentrilliondollars.order.service.OrderAdminService;
+import org.example.tentrilliondollars.order.service.OrderDataService;
+import org.example.tentrilliondollars.order.service.OrderService;
 import org.example.tentrilliondollars.product.dto.request.ProductRequest;
 import org.example.tentrilliondollars.product.dto.request.ProductUpdateRequest;
 import org.example.tentrilliondollars.product.dto.request.StockUpdateRequest;
@@ -45,9 +49,8 @@ public class ProductService {
     private final ProductRepository productRepository;
     private final UserService userService;
     private final S3Service s3Service;
-    private final OrderAdminService orderAdminService;
-    private final OrderRepository orderRepository;
     private final NotificationService notificationService;
+    private final OrderDataService orderDataService;
     @Value("${product.bucket.name}")
     String bucketName;
 
@@ -97,7 +100,7 @@ public class ProductService {
     public List<ProductAdminResponse> getAdminProducts(User user, Pageable pageable) {
         Page<Product> productPage = productRepository.findAllByUserIdAndStateTrue(user.getId(),
             pageable);
-        return getPageResponse2(productPage);
+        return getAdminPageResponse(productPage);
     }
 
     @Transactional
@@ -167,23 +170,24 @@ public class ProductService {
             .map(ProductResponse::new)
             .collect(Collectors.toList());
     }
-
-    private List<ProductAdminResponse> getPageResponse2(Page<Product> productPage) {
+    //*************************관리자 상품조회 쿼리개선****************************************//
+    //batch 조회 방식을 통해서 개선 했습니다.
+    //batch 조회란 : 데이터 베이스에서 여러개의 데이터를 한번에 가져오는 기술이라고 합니다.
+    //OrderDataService라는 클래스랑 같이 참고해서 보시면 공부 되실거에요!
+    private List<ProductAdminResponse> getAdminPageResponse(Page<Product> productPage){
+        // Product List ID 리스트 추출
+        List<Long> productIds = productPage.getContent().stream().map(Product::getId).collect(Collectors.toList());
+        List<OrderDetail> orderDetails = orderDataService.getOrderDetailListUseProductIdList(productIds);
+        // OrderDetail 배치 조회
+        List<Long> orderIds = orderDataService.getOrderIdList(orderDetails);
+        // Order 배치 조회
+        Map<Long,Order> orderMap = orderDataService.getOrderMap(orderIds);
+        //productAdminResponse 생성
+        Map<Long,List<OrderDetailAdminResponse>> orderDetailsMap = orderDataService.getOrderDetailAdminResponse(orderMap,orderDetails);
         return productPage.getContent().stream()
-            .map(product -> {
-                List<OrderDetail> orderDetails = orderAdminService.findOrderDetailsByProductId(
-                    product.getId());
-                List<OrderDetailAdminResponse> orderDetailResponseDtos = new ArrayList<>();
-                for (OrderDetail orderDetail : orderDetails) {
-                    Order order = orderRepository.getById(orderDetail.getOrderId());
-                    orderDetailResponseDtos.add(new OrderDetailAdminResponse(orderDetail, order));
-                }
-
-                return new ProductAdminResponse(product, orderDetailResponseDtos);
-            })
+            .map(product -> new ProductAdminResponse(product, orderDetailsMap.getOrDefault(product.getId(), Collections.emptyList())))
             .collect(Collectors.toList());
     }
-
     public void uploadProductImage(Long productId, MultipartFile file) throws IOException {
         String imageKey = UUID.randomUUID().toString();
         String format = "product-images/%s/%s".formatted(productId,
