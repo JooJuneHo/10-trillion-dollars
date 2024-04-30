@@ -16,7 +16,9 @@ build/
 bin/
 !**/src/main/**/bin/
 !**/src/test/**/bin/
-
+#application.properties
+src\main\resources\application.properties
+src/test/resources/test.properties
 ### IntelliJ IDEA ###
 .idea
 *.iws
@@ -35,3 +37,4 @@ out/
 
 ### VS Code ###
 .vscode/
+test.properties
