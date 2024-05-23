@@ -36,7 +36,6 @@ public class S3Service {
                 .build();
         RequestBody requestBody = RequestBody
                 .fromInputStream(file.getInputStream(),file.getSize());
-
     s3.putObject(objectRequest, requestBody);
     }
 }

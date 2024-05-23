@@ -1,17 +1,17 @@
 package org.example.tentrilliondollars.order.service;
 
-import java.lang.reflect.Field;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.IntStream;
 import org.example.tentrilliondollars.address.entity.Address;
 import org.example.tentrilliondollars.global.security.UserDetailsImpl;
-import org.example.tentrilliondollars.kakaopay.service.KakaoPayService;
 import org.example.tentrilliondollars.product.entity.Product;
 import org.example.tentrilliondollars.product.repository.ProductRepository;
 import org.example.tentrilliondollars.user.entity.User;
 import org.example.tentrilliondollars.user.entity.UserRoleEnum;
+import org.example.tentrilliondollars.user.repository.UserRepository;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -28,47 +28,91 @@ class OrderServiceTest {
 
     @MockBean
     private ProductRepository productRepository;
+    @MockBean
+    private UserRepository userRepository;
     @Autowired
     private OrderService orderService;
     UserDetailsImpl userDetails;
-    @Autowired
-    KakaoPayService kakaoPayService;
     User user;
     Product product;
     Address address;
     Map<Long, Long> basket = new HashMap<>();
 
     @BeforeEach
-        //public void createOrder(Map<Long, Long> basket, UserDetailsImpl userDetails, Long addressId)
-    void set() throws NoSuchFieldException {
+    void setup() {
         user = new User(1L, "tester", "test@test.com", UserRoleEnum.USER);
         userDetails = new UserDetailsImpl(user);
         product = new Product("test",1000L,"test",1000L,user.getId());
         ReflectionTestUtils.setField(product,"id",1L);
         productRepository.save(product);
         address = new Address(1L, "test", "test", "test", user.getId());
-        basket.put(1L, 2L);
+        basket.put(1L, 1L);
         Mockito.when(productRepository.findById(1L)).thenReturn(Optional.of(product));
         // productRepository.getReferenceById가 호출될 때 product 객체를 반환하도록 설정
         Mockito.when(productRepository.getReferenceById(1L)).thenReturn(product);
     }
-
-    //테스트 코드
     @Test
     @DisplayName("병렬로 100번 실행하여 재고 업데이트 테스트")
-    void test() {
+    void test2() {
         IntStream.range(0, 100).parallel().forEach(i -> {
             try {
                 // createOrder 메서드로부터 Order의 ID를 받아온다
-                Long orderId = orderService.createOrderTest(basket, userDetails, address.getId());
-                // 받아온 orderId를 kakaoPayService.getApprove 메서드에 전달
-                kakaoPayService.getApproveTest(orderId); // 수정된 부분
+                orderService.createOrder(basket, userDetails, address.getId());
             } catch (Exception e) {
-                throw new RuntimeException(e);
+                Assertions.fail("주문 생성 중 예외 발생: " + e.getMessage());
             }
         });
     }
 }
+
+
+
+
+
+
+
+
+
+
+//    @BeforeEach
+//        //public void createOrder(Map<Long, Long> basket, UserDetailsImpl userDetails, Long addressId)
+//    void set() throws NoSuchFieldException {
+//        user = new User(1L, "tester", "test@test.com", UserRoleEnum.USER);
+//        userDetails = new UserDetailsImpl(user);
+//        product = new Product("test",1000L,"test",1000L,user.getId());
+//        ReflectionTestUtils.setField(product,"id",1L);
+//        productRepository.save(product);
+//        address = new Address(1L, "test", "test", "test", user.getId());
+//        basket.put(1L, 1L);
+//        Mockito.when(productRepository.findById(1L)).thenReturn(Optional.of(product));
+//        // productRepository.getReferenceById가 호출될 때 product 객체를 반환하도록 설정
+//        Mockito.when(productRepository.getReferenceById(1L)).thenReturn(product);
+//    }
+//    @Test
+//    @DisplayName("순차적으로 100번 실행하여 재고 업데이트 테스트")
+//    void test() {
+//        for (int i = 0; i < 100; i++) {
+//            try {
+//                orderService.createOrder(basket, userDetails, address.getId());
+//            } catch (Exception e) {
+//                Assertions.fail("주문 생성 중 예외 발생: " + e.getMessage());
+//            }
+//        }
+//    }
+    //테스트 코드2
+//    @Test
+//    @DisplayName("병렬로 100번 실행하여 재고 업데이트 테스트")
+//    void test2() {
+//        IntStream.range(0, 100).parallel().forEach(i -> {
+//            try {
+//                // createOrder 메서드로부터 Order의 ID를 받아온다
+//                orderService.createOrder(basket, userDetails, address.getId());
+//            } catch (Exception e) {
+//                Assertions.fail("주문 생성 중 예외 발생: " + e.getMessage());
+//            }
+//        });
+//    }
+//}
 
 
 //    public void createMultipleUsers() {

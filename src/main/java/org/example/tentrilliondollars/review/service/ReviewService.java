@@ -43,16 +43,12 @@ public class ReviewService {
         Product product = productService.getProduct(productId);
         List<OrderDetail> orderDetails = orderService.getOrderDetails(userId, productId);
         productService.checkProductStateIsFalse(product);
-//        if(!orderService.checkOrderState(userId,productId)) {
-//            throw new BadRequestException("결제를 한 상태의 주문에 대해서만 리뷰 작성이 가능합니다.");
-//        }
+
         if (orderDetails.isEmpty()) {
             throw new BadRequestException("주문한 상품에 대해서만 리뷰 작성이 가능합니다.");
         }
         OrderDetail orderDetail = orderDetails.get(0);
-//        if(!canUserReviewProduct(userId, productId)) {
-//            throw new BadRequestException("주문한 상품에 대해서만 리뷰 작성이 가능 합니다.");
-//        }
+
         if(orderDetail.isReviewed()){
             throw new BadRequestException("이미 작성한 리뷰 입니다.");
         }
@@ -155,6 +151,13 @@ public class ReviewService {
             throw new NotFoundException("요청한 리뷰 이미지가 S3 버킷에 존재하지 않습니다. 이미지 키를 확인해주세요.");
         }
     }
-
-
 }
+
+//******************** 예외처리 주석 ****************************************//
+
+//        if(!orderService.checkOrderState(userId,productId)) {
+//            throw new BadRequestException("결제를 한 상태의 주문에 대해서만 리뷰 작성이 가능합니다.");
+//        }
+//        if(!canUserReviewProduct(userId, productId)) {
+//            throw new BadRequestException("주문한 상품에 대해서만 리뷰 작성이 가능 합니다.");
+//        }
