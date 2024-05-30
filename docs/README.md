@@ -10,6 +10,7 @@
 
 ### 🔗 MSA Repository Link
 
+- <a href="https://github.com/10-trillion-dollars/dollar-front" target="_blank">Front</a>
 - [Front](https://github.com/10-trillion-dollars/dollar-front)
 - [User](https://github.com/10-trillion-dollars/dollar-front)
 - [Product](https://github.com/10-trillion-dollars/dollar-front)
