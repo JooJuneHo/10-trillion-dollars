@@ -11,10 +11,10 @@
 ### 🔗 MSA Repository Link
 
 - [Front](https://github.com/10-trillion-dollars/dollar-front)
-- [User](https://github.com/10-trillion-dollars/dollar-front)
-- [Product](https://github.com/10-trillion-dollars/dollar-front)
-- [Order](https://github.com/10-trillion-dollars/dollar-front)
-- [Review](https://github.com/10-trillion-dollars/dollar-front)
+- [User](https://github.com/10-trillion-dollars/dollar-user)
+- [Product](https://github.com/10-trillion-dollars/dollar-product)
+- [Order](https://github.com/10-trillion-dollars/dollar-order)
+- [Review](https://github.com/10-trillion-dollars/dollar-review)
 
 ### ⚙개발환경
 
