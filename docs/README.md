@@ -10,7 +10,7 @@
 
 ### 🔗 MSA Repository Link
 
-- [쇼핑몰 바로가기](https://10-trillion-dollars.shop) (9 to 21)
+- [쇼핑몰 바로가기](https://10-trillion-dollars.shop) (9:00 ~ 21:00)
 
 - [Front](https://github.com/10-trillion-dollars/dollar-front)
 - [User](https://github.com/10-trillion-dollars/dollar-user)
